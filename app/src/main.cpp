@@ -69,7 +69,7 @@ void show_console_result(std::vector<bbox_t> const result_vec, std::vector<std::
     }
 }
 
-json json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, int frame_id = -1) {
+json json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, image_t img, int frame_id = -1) {
     json j;
     if (frame_id >= 0) j["frameId"] = frame_id;
     j["objects"] = {};
@@ -78,7 +78,7 @@ json json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> 
         if (obj_names.size() > i.obj_id) j["objects"][c]["className"] = obj_names[i.obj_id];
         j["objects"][c]["objId"] = i.obj_id;
         j["objects"][c]["score"] = i.prob;
-        j["objects"][c]["bbox"] = { i.x, i.y, i.w, i.h };
+        j["objects"][c]["bbox"] = { i.x/img.w, i.y/img.h, i.w/img.w, i.h/img.h };
         c++;
     }
     return j;
@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
             detector.free_image(img);
             show_console_result(result_vec, obj_names);
 
-            auto j = json_result(result_vec, obj_names);
+            auto j = json_result(result_vec, obj_names, img);
             j["image"] = msg->get_payload_str();
             topic_out.publish(j.dump());
         }
