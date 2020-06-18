@@ -9,12 +9,13 @@
 #include <csignal>
 #include <functional>
 #include <regex>
+#include <fstream>
 #include "mqtt/async_client.h"
 #include "mqtt/topic.h"
 #include "base64.h"
 #include "json.hpp"
+using json = nlohmann::json;
 
-#include <fstream>
 #include "darknet.h"
 #include "yolo_v2_class.hpp"
 extern "C" {
@@ -68,14 +69,19 @@ void show_console_result(std::vector<bbox_t> const result_vec, std::vector<std::
     }
 }
 
-void json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, int frame_id = -1) {
-    if (frame_id >= 0) std::cout << " Frame: " << frame_id << std::endl;
+json json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, int frame_id = -1) {
+    json j;
+    if (frame_id >= 0) j["frameId"] = frame_id;
+    j["objects"] = {};
+    int c = 0;
     for (auto &i : result_vec) {
-        if (obj_names.size() > i.obj_id) std::cout << obj_names[i.obj_id] << " - ";
-        std::cout << "obj_id = " << i.obj_id << ",  x = " << i.x << ", y = " << i.y
-            << ", w = " << i.w << ", h = " << i.h
-            << std::setprecision(3) << ", prob = " << i.prob << std::endl;
+        if (obj_names.size() > i.obj_id) j["objects"][c]["className"] = obj_names[i.obj_id];
+        j["objects"][c]["objId"] = i.obj_id;
+        j["objects"][c]["score"] = i.prob;
+        j["objects"][c]["bbox"] = { i.x, i.y, i.w, i.h };
+        c++;
     }
+    return j;
 }
 
 std::vector<std::string> objects_names_from_file(std::string const filename) {
@@ -172,8 +178,9 @@ int main(int argc, char* argv[])
             detector.free_image(img);
             show_console_result(result_vec, obj_names);
 
-            //auto j = json::parse(msg->get_payload_str());
-            //topic_out->publish(j.dump());
+            auto j = json_result(result_vec, obj_names);
+            j["image"] = encodedImageData;
+            topic_out.publish(j.dump());
         }
         catch (std::exception &e) {
             std::cerr << "exception: " << e.what() << "\n";

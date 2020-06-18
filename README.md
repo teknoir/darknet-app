@@ -1,5 +1,5 @@
-# Teknoir App C++ Template
-A small footprint c++ app.
+# Teknoir Darknet App C++
+A small footprint c++ darknet app.
 A base for building c++ apps on the teknoir platform.
 
 ## Build
@@ -9,6 +9,7 @@ gcloud builds submit . --config=cloudbuild.yaml --timeout=3600 --substitutions=S
 
 ## Build locally
 ```bash
+cd app
 mkdir build
 cd build
 cmake ..
@@ -35,10 +36,8 @@ To stop the example press `ctrl-c`.
 
 ## Legacy build and publish docker images
 ```bash
-docker build -t tekn0ir/darknet:arm64v8 -f arm64v8.Dockerfile .
-docker push tekn0ir/darknet:arm64v8
-
-
+docker build -t tekn0ir/darknet:amd64 -f amd64.Dockerfile .
+docker push tekn0ir/darknet:amd64
 ```
 
 

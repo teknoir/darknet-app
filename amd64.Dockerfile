@@ -1,15 +1,9 @@
 #FROM  balenalib/jetson-nano-ubuntu:bionic as app_build
 FROM  balenalib/intel-nuc-debian:buster-build as yolo-app-build
 
-#RUN apt update && apt-get --no-install-recommends install -y build-essential gcc make cmake cmake-gui cmake-curses-gui libssl-dev git
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt-get --no-install-recommends install -y build-essential gcc make libssl-dev git
 
-# Install Cmake
-#RUN cd /tmp && \
-#    wget https://github.com/Kitware/CMake/releases/download/v3.14.4/cmake-3.14.4-Linux-x86_64.sh && \
-#    chmod +x cmake-3.14.4-Linux-x86_64.sh && \
-#    ./cmake-3.14.4-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license && \
-#    rm ./cmake-3.14.4-Linux-x86_64.sh
 RUN CMAKE_VERSION=3.15 && \
     CMAKE_BUILD=3.15.0 && \
     curl -L https://cmake.org/files/v${CMAKE_VERSION}/cmake-${CMAKE_BUILD}.tar.gz | tar -xzf - && \
@@ -48,18 +42,22 @@ RUN cp -rf /darknet/darknet/libdarknet.so /usr/lib/ && \
     cp -rf /darknet/darknet/include/* /usr/include/
 
 WORKDIR /app
-ADD . /app
+ADD ./app /app
 RUN cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=/app && \
     cmake --build build/ --target install
 
 ##########################
 FROM  balenalib/intel-nuc-debian:buster-build as app_release
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt-get --no-install-recommends install -y openssl
 
 ENV PAHO_MQTT_HOME=/paho.mqtt
 COPY --from=yolo-app-build ${PAHO_MQTT_HOME}/lib /usr/lib
 COPY --from=yolo-app-build /darknet/darknet/libdarknet.so /usr/lib
+COPY --from=yolo-app-build /darknet/darknet/darknet /usr/bin
+COPY --from=yolo-app-build /darknet/darknet/uselib /usr/bin
+COPY --from=yolo-app-build /darknet/darknet/data/person.jpg /root
 COPY --from=yolo-app-build /app/bin /usr/bin
 ADD ./darknet /darknet
 
