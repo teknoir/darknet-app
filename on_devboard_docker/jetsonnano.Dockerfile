@@ -57,6 +57,8 @@ RUN apt update && apt-get --no-install-recommends install -y openssl
 ENV PAHO_MQTT_HOME=/paho.mqtt
 COPY --from=yolo-app-build ${PAHO_MQTT_HOME}/lib /usr/lib
 COPY --from=yolo-app-build /darknet/darknet/libdarknet.so /usr/lib
+COPY --from=yolo-app-build /darknet/darknet/darknet /usr/bin
+COPY --from=yolo-app-build /darknet/darknet/data/person.jpg /root
 COPY --from=yolo-app-build /app/bin /usr/bin
 ADD ./darknet /darknet
 
