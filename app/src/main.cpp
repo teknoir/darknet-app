@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
             show_console_result(result_vec, obj_names);
 
             auto j = json_result(result_vec, obj_names);
-            j["image"] = encodedImageData;
+            j["image"] = msg->get_payload_str();
             topic_out.publish(j.dump());
         }
         catch (std::exception &e) {
