@@ -78,7 +78,7 @@ json json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> 
         if (obj_names.size() > i.obj_id) j["objects"][c]["className"] = obj_names[i.obj_id];
         j["objects"][c]["objId"] = i.obj_id;
         j["objects"][c]["score"] = i.prob;
-        j["objects"][c]["bbox"] = { i.x/img.w, i.y/img.h, i.w/img.w, i.h/img.h };
+        j["objects"][c]["bbox"] = { (float)i.x/(float)img.w, (float)i.y/(float)img.h, (float)i.w/(float)img.w, (float)i.h/(float)img.h };
         c++;
     }
     return j;
