@@ -59,6 +59,16 @@ image_t proc_image(unsigned char* buffer, int size)
 }
 
 void show_console_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, int frame_id = -1) {
+    if (frame_id >= 0) std::cout << " Frame: " << frame_id << std::endl << std::flush;
+    for (auto &i : result_vec) {
+        if (obj_names.size() > i.obj_id) std::cout << obj_names[i.obj_id] << " - ";
+        std::cout << "obj_id = " << i.obj_id << ",  x = " << i.x << ", y = " << i.y
+            << ", w = " << i.w << ", h = " << i.h
+            << std::setprecision(3) << ", prob = " << i.prob << std::endl << std::flush;
+    }
+}
+
+void json_result(std::vector<bbox_t> const result_vec, std::vector<std::string> const obj_names, int frame_id = -1) {
     if (frame_id >= 0) std::cout << " Frame: " << frame_id << std::endl;
     for (auto &i : result_vec) {
         if (obj_names.size() > i.obj_id) std::cout << obj_names[i.obj_id] << " - ";
@@ -91,35 +101,6 @@ std::string getOrDefault(std::string name, std::string value)
 
 const int MAX_BUFFERED_MSGS = 1024;	// Amount of off-line buffering
 const std::string PERSIST_DIR { "data-persist" };
-
-void handleImageMsg(mqtt::const_message_ptr msg, Detector* detector, std::vector<std::string> obj_names, mqtt::topic* topic_out)
-{
-    std::cout << "Image received!\n" << std::flush;
-    try {
-        std::cout << "Regexp before\n" << std::flush;
-        std::regex e("^data:image/.+;base64,(.+)");
-        std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$1");
-
-        std::cout << "Base64 decode before\n" << std::flush;
-        std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
-
-        std::cout << "Regexp before\n" << std::flush;
-        image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-
-        std::vector<bbox_t> result_vec = detector->detect(img);
-        detector->free_image(img);
-        show_console_result(result_vec, obj_names);
-    }
-    catch (std::exception &e) {
-        std::cerr << "exception: " << e.what() << "\n";
-    }
-    catch (...) {
-        std::cerr << "unknown exception \n";
-    }
-
-
-    //topic_out->publish(j.dump());
-}
 
 std::function<void(int)> shutdown_handler;
 void signalHandler( int signum ) {
@@ -182,25 +163,17 @@ int main(int argc, char* argv[])
             //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
             //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
             //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
-
             std::string encodedImageData = msg->get_payload_str();
             std::string delimiter = ";base64,";
             encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
-
-            std::cout << "Base64 decode before: " << encodedImageData << "\n" << std::flush;
             std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
-
-            std::cout << "Proc image before\n" << std::flush;
             image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-
-            std::cout << "Detect before\n" << std::flush;
             std::vector<bbox_t> result_vec = detector.detect(img);
             detector.free_image(img);
             show_console_result(result_vec, obj_names);
 
-
-
-
+            //auto j = json::parse(msg->get_payload_str());
+            //topic_out->publish(j.dump());
         }
         catch (std::exception &e) {
             std::cerr << "exception: " << e.what() << "\n";
@@ -208,9 +181,6 @@ int main(int argc, char* argv[])
         catch (...) {
             std::cerr << "unknown exception \n";
         }
-
-
-        //topic_out->publish(j.dump());
     };
 
 	// Set the callback for incoming messages
