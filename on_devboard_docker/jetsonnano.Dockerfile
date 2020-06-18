@@ -44,7 +44,7 @@ RUN cp -rf /darknet/darknet/libdarknet.so /usr/lib/ && \
     cp -rf /darknet/darknet/include/* /usr/include/
 
 WORKDIR /app
-ADD . /app
+ADD ./app /app
 RUN cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=/app && \
     cmake --build build/ --target install
 
