@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yolo-test-template
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yolo-test-template
+  template:
+    metadata:
+      labels:
+        app: yolo-test-template
+    spec:
+      imagePullSecrets:
+        - name: gcr-json-key
+      containers:
+        - name: yolo-test-template
+          image: tekn0ir/yolo-test:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          env:
+            - name: HMQ_SERVICE_HOST
+              value: "hmq.kube-system"
+            - name: HMQ_SERVICE_PORT
+              value: "1883"
+            - name: MQTT_IN_0
+              value: "yolo-test-template/input"
+            - name: MQTT_OUT_0
+              value: "yolo-test-template/output"
