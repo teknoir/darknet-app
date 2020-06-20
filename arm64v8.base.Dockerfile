@@ -80,4 +80,5 @@ COPY --from=yolo-app-build /darknet/darknet/libdarknet.so /usr/lib
 COPY --from=yolo-app-build /app/bin /usr/bin
 RUN [ "cross-build-end" ]
 
+STOPSIGNAL SIGINT
 CMD ["/usr/bin/teknoir_app"]

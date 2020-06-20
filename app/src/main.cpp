@@ -11,6 +11,7 @@
 #include <regex>
 #include <fstream>
 #include <chrono>
+#include <unistd.h>
 #include "mqtt/async_client.h"
 #include "mqtt/topic.h"
 #include "base64.h"
@@ -227,11 +228,7 @@ int main(int argc, char* argv[])
 	}
 
 	// Just block till user tells us to quit with a SIGINT.
-    std::string usrMsg;
-	while (std::getline(std::cin, usrMsg)) {
-		usrMsg = "{\"message\": \"" + usrMsg + "\"}";
-		topic_out.publish(usrMsg);
-	}
+    while(true){ usleep(250000); }
 
  	return 0;
 }
