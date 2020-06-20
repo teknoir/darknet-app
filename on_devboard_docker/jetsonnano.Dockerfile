@@ -61,6 +61,5 @@ COPY --from=yolo-app-build /darknet/darknet/darknet /usr/bin
 COPY --from=yolo-app-build /darknet/darknet/uselib /usr/bin
 COPY --from=yolo-app-build /darknet/darknet/data/person.jpg /root
 COPY --from=yolo-app-build /app/bin /usr/bin
-ADD ./darknet /darknet
 
 CMD ["/usr/bin/teknoir_app"]
