@@ -2,41 +2,72 @@ timeout: '3600s'
 
 steps:
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-amd64.base'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+      - '-f'
+      - './amd64.base.Dockerfile'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-amd64.base'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+    waitFor: ['build-amd64.base']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'manifest-base'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - 'manifest'
+      - 'create'
+      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+    waitFor: ['push-amd64.base']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'annotate-manifest-amd64.base'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - 'manifest'
+      - 'annotate'
+      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+      - '--os=linux'
+    waitFor: ['manifest-base']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-manifest.base'
+    env:
+      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+    args:
+      - 'manifest'
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+    waitFor: ['annotate-manifest-amd64.base']
+
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'amd64'
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/yolo-test:amd64'
+      - 'gcr.io/$PROJECT_ID/darknet:amd64'
       - '-f'
       - './amd64.Dockerfile'
       - '.'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'arm32v6'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v6'
-      - '-f'
-      - './arm32v6.Dockerfile'
-      - '.'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'arm32v7'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v7'
-      - '-f'
-      - './arm32v7.Dockerfile'
-      - '.'
+    waitFor: ['push-manifest.base']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'arm64v8'
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm64v8'
+      - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
       - '-f'
       - './arm64v8.Dockerfile'
       - '.'
@@ -45,28 +76,14 @@ steps:
     id: 'push-amd64'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/yolo-test:amd64'
+      - 'gcr.io/$PROJECT_ID/darknet:amd64'
     waitFor: ['amd64']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-arm32v6'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v6'
-    waitFor: ['arm32v6']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-arm32v7'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v7'
-    waitFor: ['arm32v7']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-arm64v8'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm64v8'
+      - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
     waitFor: ['arm64v8']
 
   - name: 'gcr.io/cloud-builders/docker'
@@ -76,12 +93,10 @@ steps:
     args:
       - 'manifest'
       - 'create'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/yolo-test:amd64'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v6'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v7'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm64v8'
-    waitFor: ['push-amd64', 'push-arm32v6', 'push-arm32v7', 'push-arm64v8']
+      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
+      - 'gcr.io/$PROJECT_ID/darknet:amd64'
+      - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
+    waitFor: ['push-amd64', 'push-arm64v8']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'annotate-manifest-amd64'
@@ -90,39 +105,10 @@ steps:
     args:
       - 'manifest'
       - 'annotate'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/yolo-test:amd64'
+      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
+      - 'gcr.io/$PROJECT_ID/darknet:amd64'
       - '--os=linux'
     waitFor: ['manifest']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'annotate-manifest-arm32v6'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'annotate'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v6'
-      - '--os=linux'
-      - '--arch=arm'
-      - '--variant=v6'
-    waitFor: ['manifest']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'annotate-manifest-arm32v7'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'annotate'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm32v7'
-      - '--os=linux'
-      - '--arch=arm'
-      - '--variant=v7'
-    waitFor: ['manifest']
-
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'annotate-manifest-arm64v8'
@@ -131,8 +117,8 @@ steps:
     args:
       - 'manifest'
       - 'annotate'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/yolo-test:arm64v8'
+      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
+      - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
       - '--os=linux'
       - '--arch=arm64'
       - '--variant=v8'
@@ -145,11 +131,10 @@ steps:
     args:
       - 'manifest'
       - 'push'
-      - 'gcr.io/$PROJECT_ID/yolo-test:${SHORT_SHA}'
-    waitFor: ['annotate-manifest-amd64', 'annotate-manifest-arm32v6', 'annotate-manifest-arm32v7', 'annotate-manifest-arm64v8']
+      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
+    waitFor: ['annotate-manifest-amd64', 'annotate-manifest-arm64v8']
 
 images:
-  - 'gcr.io/$PROJECT_ID/yolo-test:amd64'
-  - 'gcr.io/$PROJECT_ID/yolo-test:arm32v6'
-  - 'gcr.io/$PROJECT_ID/yolo-test:arm32v7'
-  - 'gcr.io/$PROJECT_ID/yolo-test:arm64v8'
+  - 'gcr.io/$PROJECT_ID/darknet:amd64'
+  - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
+  - 'gcr.io/$PROJECT_ID/darknet_base:amd64'

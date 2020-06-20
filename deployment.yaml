@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: yolo-test-template
+  name: darknet
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: yolo-test-template
+      app: darknet
   template:
     metadata:
       labels:
-        app: yolo-test-template
+        app: darknet
     spec:
       imagePullSecrets:
         - name: gcr-json-key
       containers:
-        - name: yolo-test-template
-          image: tekn0ir/yolo-test:latest
+        - name: darknet
+          image: tekn0ir/darknet:latest
           imagePullPolicy: Always
           securityContext:
             privileged: true
@@ -26,6 +26,12 @@ spec:
             - name: HMQ_SERVICE_PORT
               value: "1883"
             - name: MQTT_IN_0
-              value: "yolo-test-template/input"
+              value: "darknet/input"
             - name: MQTT_OUT_0
-              value: "yolo-test-template/output"
+              value: "darknet/output"
+            - name: NAMES_FILE
+              value: "/darknet/coco.names"
+            - name: CFG_FILE
+              value: "/darknet/yolov3.cfg"
+            - name: WEIGHTS_FILE
+              value: "/darknet/yolov3.weights"

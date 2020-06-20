@@ -119,9 +119,9 @@ int main(int argc, char* argv[])
 	// The broker/server address
 	const std::string SERVER_ADDRESS("tcp://"+getOrDefault("HMQ_SERVICE_HOST", "hmq.kube-system")+":"+getOrDefault("HMQ_SERVICE_PORT", "1883"));
 	// The topic name for output 0
-	const std::string MQTT_OUT_0(getOrDefault("MQTT_OUT_0", "goodbye/world"));
+	const std::string MQTT_OUT_0(getOrDefault("MQTT_OUT_0", "darknet/out"));
 	// The topic name for input 0
-	const std::string MQTT_IN_0(getOrDefault("MQTT_IN_0", "welcome/world"));
+	const std::string MQTT_IN_0(getOrDefault("MQTT_IN_0", "darknet/in"));
 	// The QoS to use for publishing and subscribing
 	const int QOS = 1;
 	// Tell the broker we don't want our own messages sent back to us.
