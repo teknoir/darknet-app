@@ -10,6 +10,7 @@
 #include <functional>
 #include <regex>
 #include <fstream>
+#include <chrono>
 #include "mqtt/async_client.h"
 #include "mqtt/topic.h"
 #include "base64.h"
@@ -174,12 +175,17 @@ int main(int argc, char* argv[])
             encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
             std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
             image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-            std::vector<bbox_t> result_vec = detector.detect(img);
-            detector.free_image(img);
-            show_console_result(result_vec, obj_names);
 
+            auto start = std::chrono::high_resolution_clock::now();
+            std::vector<bbox_t> result_vec = detector.detect(img);
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+            detector.free_image(img);
+
+            show_console_result(result_vec, obj_names);
             auto j = json_result(result_vec, obj_names, img);
             j["image"] = msg->get_payload_str();
+            j["inference_time"] = duration.count()/1000.0;
             topic_out.publish(j.dump());
         }
         catch (std::exception &e) {

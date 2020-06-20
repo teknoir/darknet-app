@@ -16,7 +16,7 @@ spec:
         - name: gcr-json-key
       containers:
         - name: darknet
-          image: tekn0ir/darknet:latest
+          image: gcr.io/teknoir/darknet:arm64v8
           imagePullPolicy: Always
           securityContext:
             privileged: true
@@ -26,9 +26,9 @@ spec:
             - name: HMQ_SERVICE_PORT
               value: "1883"
             - name: MQTT_IN_0
-              value: "darknet/input"
+              value: "darknet/in"
             - name: MQTT_OUT_0
-              value: "darknet/output"
+              value: "darknet/out"
             - name: NAMES_FILE
               value: "/darknet/coco.names"
             - name: CFG_FILE
