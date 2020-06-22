@@ -1,4 +1,5 @@
-ARG JETPACK_VERSION=r32.3.1
+ARG JETPACK_VERSION=r32.4.2
+#ARG JETPACK_VERSION=r32.3.1
 
 ##################################################
 FROM nvcr.io/nvidia/l4t-base:${JETPACK_VERSION} as yolo-app-build
