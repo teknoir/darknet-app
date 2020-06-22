@@ -119,7 +119,7 @@ void signalHandler( int signum ) {
 int main(int argc, char* argv[])
 {
 	// The broker/server address
-	const std::string SERVER_ADDRESS("tcp://"+getOrDefault("HMQ_SERVICE_HOST", "hmq.kube-system")+":"+getOrDefault("HMQ_SERVICE_PORT", "1883"));
+	const std::string SERVER_ADDRESS("tcp://"+getOrDefault("MQTT_SERVICE_HOST", "mqtt.kube-system")+":"+getOrDefault("MQTT_SERVICE_PORT", "1883"));
 	// The topic name for output 0
 	const std::string MQTT_OUT_0(getOrDefault("MQTT_OUT_0", "darknet/out"));
 	// The topic name for input 0

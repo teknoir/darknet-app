@@ -21,9 +21,9 @@ spec:
           securityContext:
             privileged: true
           env:
-            - name: HMQ_SERVICE_HOST
-              value: "hmq.kube-system"
-            - name: HMQ_SERVICE_PORT
+            - name: MQTT_SERVICE_HOST
+              value: "mqtt.kube-system"
+            - name: MQTT_SERVICE_PORT
               value: "1883"
             - name: MQTT_IN_0
               value: "darknet/in"

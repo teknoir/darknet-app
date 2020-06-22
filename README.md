@@ -29,7 +29,7 @@ make install
 ## Run interactively on device
 ```bash
 sudo kubectl run darknet -ti --rm --image tekn0ir/darknet:arm64v8 \
-    --overrides='{"spec": {"metadata": {"name": "darknet"}, "template": {"spec":{"imagePullSecrets":[{"name":"gcr-json-key"}],"containers":[{"name":"darknet","image":"tekn0ir/darknet:arm64v8", "command": ["/bin/bash"], "tty": true, "stdin": true,"imagePullPolicy":"Always","securityContext":{"privileged":true},"env":[{"name":"HMQ_SERVICE_HOST","value":"hmq.kube-system"},{"name":"HMQ_SERVICE_PORT","value":"1883"},{"name":"MQTT_IN_0","value":"yolo/images"},{"name":"MQTT_OUT_0","value":"yolo/results"}]}]}}}}'
+    --overrides='{"spec": {"metadata": {"name": "darknet"}, "template": {"spec":{"imagePullSecrets":[{"name":"gcr-json-key"}],"containers":[{"name":"darknet","image":"tekn0ir/darknet:arm64v8", "command": ["/bin/bash"], "tty": true, "stdin": true,"imagePullPolicy":"Always","securityContext":{"privileged":true},"env":[{"name":"MQTT_SERVICE_HOST","value":"mqtt.kube-system"},{"name":"MQTT_SERVICE_PORT","value":"1883"},{"name":"MQTT_IN_0","value":"yolo/images"},{"name":"MQTT_OUT_0","value":"yolo/results"}]}]}}}}'
 
 python3 app.py
 ```
@@ -38,7 +38,7 @@ python3 app.py
 ```bash
 docker run -it --rm -p 1883:1883 -p 9001:9001 --name mqtt-broker eclipse-mosquitto
 # and in another terminal window run:
-docker run -it --rm -e HMQ_SERVICE_HOST=<YOUR IP> tekn0ir/darknet:arm64v8
+docker run -it --rm -e MQTT_SERVICE_HOST=<YOUR IP> tekn0ir/darknet:arm64v8
 ```
 To stop the example press `ctrl-c`.
 
