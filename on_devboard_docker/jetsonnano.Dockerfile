@@ -54,19 +54,19 @@ ADD ./app /app
 RUN cmake -Bbuild -H. -DCMAKE_INSTALL_PREFIX=/app && \
     cmake --build build/ --target install
 
-##################################################
-FROM nvcr.io/nvidia/l4t-base:${JETPACK_VERSION} as app_release
-
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt-get --no-install-recommends install -y openssl
-
-ENV PAHO_MQTT_HOME=/paho.mqtt
-COPY --from=yolo-app-build ${PAHO_MQTT_HOME}/lib /usr/lib
-COPY --from=yolo-app-build /darknet/darknet/libdarknet.so /usr/lib
-COPY --from=yolo-app-build /darknet/darknet/darknet /usr/bin
-COPY --from=yolo-app-build /darknet/darknet/uselib /usr/bin
-COPY --from=yolo-app-build /darknet/darknet/data/person.jpg /root
-COPY --from=yolo-app-build /app/bin /usr/bin
-RUN ln -s /usr/local/cuda-10.2/lib64/libcudart.so.10.2 /usr/lib/aarch64-linux-gnu/libcudart.so.10.0
-
-CMD ["/usr/bin/teknoir_app"]
+###################################################
+#FROM nvcr.io/nvidia/l4t-base:${JETPACK_VERSION} as app_release
+#
+#ENV DEBIAN_FRONTEND=noninteractive
+#RUN apt update && apt-get --no-install-recommends install -y openssl
+#
+#ENV PAHO_MQTT_HOME=/paho.mqtt
+#COPY --from=yolo-app-build ${PAHO_MQTT_HOME}/lib /usr/lib
+#COPY --from=yolo-app-build /darknet/darknet/libdarknet.so /usr/lib
+#COPY --from=yolo-app-build /darknet/darknet/darknet /usr/bin
+#COPY --from=yolo-app-build /darknet/darknet/uselib /usr/bin
+#COPY --from=yolo-app-build /darknet/darknet/data/person.jpg /root
+#COPY --from=yolo-app-build /app/bin /usr/bin
+##RUN ln -s /usr/local/cuda-10.2/lib64/libcudart.so.10.2 /usr/lib/aarch64-linux-gnu/libcudart.so.10.0
+#
+#CMD ["/usr/bin/teknoir_app"]
