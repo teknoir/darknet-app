@@ -25,6 +25,31 @@ extern "C" {
 }
 #undef GPU // avoid conflict with sl::MEM::GPU
 
+std::string getOrDefault(std::string name, std::string value)
+{
+    if(const char* env_p = std::getenv(name.c_str()))
+        return env_p;
+    else
+        return value;
+}
+// The client name on the broker
+const std::string CLIENT_ID("darknet");
+// The broker/server address
+const std::string SERVER_ADDRESS("tcp://"+getOrDefault("MQTT_SERVICE_HOST", "mqtt.kube-system")+":"+getOrDefault("MQTT_SERVICE_PORT", "1883"));
+// The topic name for output 0
+const std::string MQTT_OUT_0(getOrDefault("MQTT_OUT_0", "darknet/out"));
+// The topic name for input 0
+const std::string MQTT_IN_0(getOrDefault("MQTT_IN_0", "darknet/in"));
+// The QoS to use for publishing and subscribing
+const int QOS = 1;
+// Timeout
+const auto TIMEOUT = std::chrono::seconds(10);
+
+// Darknet configs
+const std::string  NAMES_FILE(getOrDefault("NAMES_FILE", "/darknet/coco.names"));
+const std::string  CFG_FILE(getOrDefault("CFG_FILE", "/darknet/yolov3.cfg"));
+const std::string  WEIGHTS_FILE(getOrDefault("WEIGHTS_FILE", "/darknet/yolov3.weights"));
+
 static image proc_image_stb(unsigned char* buffer, int len, int channels)
 {
     int w, h, c;
@@ -99,14 +124,6 @@ std::vector<std::string> objects_names_from_file(std::string const filename) {
 // for convenience
 using json = nlohmann::json;
 
-std::string getOrDefault(std::string name, std::string value)
-{
-    if(const char* env_p = std::getenv(name.c_str()))
-        return env_p;
-    else
-        return value;
-}
-
 const int MAX_BUFFERED_MSGS = 1024;	// Amount of off-line buffering
 const std::string PERSIST_DIR { "data-persist" };
 
@@ -116,35 +133,157 @@ void signalHandler( int signum ) {
     shutdown_handler(signum);
 }
 
+class action_listener : public virtual mqtt::iaction_listener
+{
+	std::string name_;
+
+	void on_failure(const mqtt::token& tok) override {
+		std::cout << name_ << " failure";
+		if (tok.get_message_id() != 0)
+			std::cout << " for token: [" << tok.get_message_id() << "]" << std::endl;
+		std::cout << std::endl;
+	}
+
+	void on_success(const mqtt::token& tok) override {
+		std::cout << name_ << " success";
+		if (tok.get_message_id() != 0)
+			std::cout << " for token: [" << tok.get_message_id() << "]" << std::endl;
+		auto top = tok.get_topics();
+		if (top && !top->empty())
+			std::cout << "\ttoken topic: '" << (*top)[0] << "', ..." << std::endl;
+		std::cout << std::endl;
+	}
+
+public:
+	action_listener(const std::string& name) : name_(name) {}
+};
+
+class callback : public virtual mqtt::callback,
+					public virtual mqtt::iaction_listener
+
+{
+	// Counter for the number of connection retries
+	int nretry_;
+	// The MQTT client
+	mqtt::async_client& cli_;
+	// Options to use if we need to reconnect
+	mqtt::connect_options& connOpts_;
+	// An action listener to display the result of actions.
+	action_listener subListener_;
+
+    Detector& detector_;
+    std::vector<std::string>& objNames_;
+
+	// This deomonstrates manually reconnecting to the broker by calling
+	// connect() again. This is a possibility for an application that keeps
+	// a copy of it's original connect_options, or if the app wants to
+	// reconnect with different options.
+	// Another way this can be done manually, if using the same options, is
+	// to just call the async_client::reconnect() method.
+	void reconnect() {
+		std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+		try {
+			cli_.connect(connOpts_, nullptr, *this);
+		}
+		catch (const mqtt::exception& exc) {
+			std::cerr << "Error: " << exc.what() << std::endl;
+			exit(1);
+		}
+	}
+
+	// Re-connection failure
+	void on_failure(const mqtt::token& tok) override {
+		std::cout << "Connection attempt failed" << std::endl;
+		if (++nretry_ > 10)
+			exit(1);
+		reconnect();
+	}
+
+	// (Re)connection success
+	// Either this or connected() can be used for callbacks.
+	void on_success(const mqtt::token& tok) override {}
+
+	// (Re)connection success
+	void connected(const std::string& cause) override {
+		std::cout << "\nConnection success" << std::endl;
+		std::cout << "\nSubscribing to topic '" << MQTT_IN_0 << "'\n"
+			<< "\tfor client " << CLIENT_ID
+			<< " using QoS" << QOS << "\n" << std::endl;
+
+		cli_.subscribe(MQTT_IN_0, QOS, nullptr, subListener_);
+	}
+
+	// Callback for when the connection is lost.
+	// This will initiate the attempt to manually reconnect.
+	void connection_lost(const std::string& cause) override {
+		std::cout << "\nConnection lost" << std::endl;
+		if (!cause.empty())
+			std::cout << "\tcause: " << cause << std::endl;
+
+		std::cout << "Reconnecting..." << std::endl;
+		nretry_ = 0;
+		reconnect();
+	}
+
+	// Callback for when a message arrives.
+	void message_arrived(mqtt::const_message_ptr msg) override {
+		std::cout << "Message arrived" << std::endl;
+		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
+		std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+		try {
+            //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
+            //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
+            //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
+            std::string encodedImageData = msg->to_string();
+            std::string delimiter = ";base64,";
+            encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
+            std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
+            image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
+
+            auto start = std::chrono::high_resolution_clock::now();
+            std::vector<bbox_t> result_vec = detector_.detect(img);
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+            detector_.free_image(img);
+
+            show_console_result(result_vec, objNames_);
+            auto j = json_result(result_vec, objNames_, img);
+            j["image"] = msg->get_payload_str();
+            j["inference_time"] = duration.count()/1000.0;
+
+            //topic_out.publish(j.dump());
+
+            mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
+            pubmsg->set_qos(QOS);
+            cli_.publish(pubmsg)->wait_for(TIMEOUT);
+        }
+        catch (std::exception &e) {
+            std::cerr << "exception: " << e.what() << "\n";
+        }
+        catch (...) {
+            std::cerr << "unknown exception \n";
+        }
+	}
+
+	void delivery_complete(mqtt::delivery_token_ptr token) override {}
+
+public:
+	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts, Detector detector, std::vector<std::string>& objNames)
+				: nretry_(0), cli_(cli), connOpts_(connOpts), subListener_("Subscription"), detector_(detector), objNames_(objNames) {}
+};
+
 int main(int argc, char* argv[])
 {
-	// The broker/server address
-	const std::string SERVER_ADDRESS("tcp://"+getOrDefault("MQTT_SERVICE_HOST", "mqtt.kube-system")+":"+getOrDefault("MQTT_SERVICE_PORT", "1883"));
-	// The topic name for output 0
-	const std::string MQTT_OUT_0(getOrDefault("MQTT_OUT_0", "darknet/out"));
-	// The topic name for input 0
-	const std::string MQTT_IN_0(getOrDefault("MQTT_IN_0", "darknet/in"));
-	// The QoS to use for publishing and subscribing
-	const int QOS = 1;
-	// Tell the broker we don't want our own messages sent back to us.
-	//const bool NO_LOCAL = true;
-
-	const auto TIMEOUT = std::chrono::seconds(10);
-
-    // Darknet configs
-	const std::string  NAMES_FILE(getOrDefault("NAMES_FILE", "/darknet/coco.names"));
-    const std::string  CFG_FILE(getOrDefault("CFG_FILE", "/darknet/yolov3.cfg"));
-    const std::string  WEIGHTS_FILE(getOrDefault("WEIGHTS_FILE", "/darknet/yolov3.weights"));
     Detector detector(CFG_FILE, WEIGHTS_FILE);
-    auto obj_names = objects_names_from_file(NAMES_FILE);
+    auto objNames = objects_names_from_file(NAMES_FILE);
 
     mqtt::connect_options connOpts;
 	connOpts.set_keep_alive_interval(20);
 	connOpts.set_clean_start(true);
-	connOpts.set_automatic_reconnect(true);
+	//connOpts.set_automatic_reconnect(true);
 	connOpts.set_mqtt_version(MQTTVERSION_3_1_1);
 
-	mqtt::async_client cli(SERVER_ADDRESS, "darknet"); //, MAX_BUFFERED_MSGS, PERSIST_DIR);
+	mqtt::async_client cli(SERVER_ADDRESS, CLIENT_ID); //, MAX_BUFFERED_MSGS, PERSIST_DIR);
 
     // Set topics: in and out
 	//mqtt::topic topic_in { cli, MQTT_IN_0, QOS };
@@ -170,71 +309,23 @@ int main(int argc, char* argv[])
         exit(signum);
     };
 
+    callback cb(cli, connOpts, detector, objNames);
+    cli.set_callback(cb);
+
 	// Start the connection.
 	try {
 		std::cout << "Connecting to the MQTT broker at '" << SERVER_ADDRESS << "'..." << std::flush;
-		cli.connect(connOpts)->wait();
-
-		// Subscribe to the topic using "no local" so that
-		// we don't get own messages sent back to us
-
-		std::cout << "Ok\nJoining the topics..." << std::flush;
-		//auto subOpts = mqtt::subscribe_options(NO_LOCAL);
-		//topic_in.subscribe(subOpts)->wait();
-		//topic_out.subscribe(subOpts)->wait();
-		cli.start_consuming();
-        cli.subscribe(MQTT_IN_0, QOS)->wait();
-		std::cout << "Ok" << std::endl;
-
-        // Consume messages
-
-		while (true) {
-			auto msg = cli.consume_message();
-			if (!msg) break;
-			std::cout << "Message received!\n" << std::flush;
-            try {
-                //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
-                //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
-                //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
-                std::string encodedImageData = msg->get_payload_str();
-                std::string delimiter = ";base64,";
-                encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
-                std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
-                image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-
-                auto start = std::chrono::high_resolution_clock::now();
-                std::vector<bbox_t> result_vec = detector.detect(img);
-                auto stop = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-                detector.free_image(img);
-
-                show_console_result(result_vec, obj_names);
-                auto j = json_result(result_vec, obj_names, img);
-                j["image"] = msg->get_payload_str();
-                j["inference_time"] = duration.count()/1000.0;
-
-                //topic_out.publish(j.dump());
-
-                mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
-                pubmsg->set_qos(QOS);
-                cli.publish(pubmsg)->wait_for(TIMEOUT);
-            }
-            catch (std::exception &e) {
-                std::cerr << "exception: " << e.what() << "\n";
-            }
-            catch (...) {
-                std::cerr << "unknown exception \n";
-            }
-		}
-
-		// Disconnect
-		shutdown_handler(0);
+		//cli.connect(connOpts)->wait();
+		cli.connect(connOpts, nullptr, cb);
 	}
 	catch (const mqtt::exception& exc) {
 		std::cerr << "\nERROR: Unable to connect. "
 			<< exc.what() << std::endl;
 		return 1;
 	}
+
+	// Just block till user tells us to quit with a SIGINT.
+    while(true){ usleep(250000); }
 
  	return 0;
 }
