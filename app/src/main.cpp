@@ -229,7 +229,7 @@ class callback : public virtual mqtt::callback,
 	void message_arrived(mqtt::const_message_ptr msg) override {
 		std::cout << "Message arrived" << std::endl;
 		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
-		std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+		//std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
 		try {
             //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
             //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
@@ -238,10 +238,12 @@ class callback : public virtual mqtt::callback,
             std::string delimiter = ";base64,";
             encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
             std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
+            std::cout << "Image decoded..." << std::endl;
             image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-
+            std::cout << "Image processed..." << std::endl;
             auto start = std::chrono::high_resolution_clock::now();
             std::vector<bbox_t> result_vec = detector_.detect(img);
+            std::cout << "Image detected..." << std::endl;
             auto stop = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
             detector_.free_image(img);
