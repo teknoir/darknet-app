@@ -50,8 +50,8 @@ RUN cp -rf ${PAHO_MQTT_HOME}/lib/* /usr/lib/ && \
 WORKDIR /darknet
 RUN git clone https://github.com/AlexeyAB/darknet.git && \
     cd darknet && \
-#    make LIBSO=1 LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64:$LD_LIBRARY_PATH
-    make GPU=1 LIBSO=1 ARCH="-gencode arch=compute_53,code=[sm_53,compute_53]" LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64:$LD_LIBRARY_PATH
+    make LIBSO=1
+#    make GPU=1 LIBSO=1 ARCH="-gencode arch=compute_53,code=[sm_53,compute_53]" LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64:$LD_LIBRARY_PATH
 #WORKDIR /darknet
 #RUN git clone https://github.com/AlexeyAB/darknet.git && \
 #    cd darknet && \
