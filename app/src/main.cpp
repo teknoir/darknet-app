@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 	// The QoS to use for publishing and subscribing
 	const int QOS = 1;
 	// Tell the broker we don't want our own messages sent back to us.
-	const bool NO_LOCAL = true;
+	//const bool NO_LOCAL = true;
 
 	const auto TIMEOUT = std::chrono::seconds(10);
 
@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
 		while (true) {
 			auto msg = cli.consume_message();
 			if (!msg) break;
-			if (msg->get_topic() == topic_in.get_name()) {
+			if (MQTT_IN_0 == topic_in.get_name()) {
                 std::cout << "Image received!\n" << std::flush;
                 try {
                     //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
