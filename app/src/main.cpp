@@ -43,7 +43,7 @@ const std::string MQTT_IN_0(getOrDefault("MQTT_IN_0", "darknet/in"));
 // The QoS to use for publishing and subscribing
 const int QOS = 1;
 // Timeout
-const auto TIMEOUT = std::chrono::seconds(10);
+//const auto TIMEOUT = std::chrono::seconds(10);
 
 // Darknet configs
 const std::string  NAMES_FILE(getOrDefault("NAMES_FILE", "/darknet/coco.names"));
@@ -257,7 +257,8 @@ class callback : public virtual mqtt::callback,
 
             mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
             pubmsg->set_qos(QOS);
-            cli_.publish(pubmsg)->wait_for(TIMEOUT);
+            //cli_.publish(pubmsg)->wait_for(TIMEOUT);
+            cli_.publish(pubmsg);
         }
         catch (std::exception &e) {
             std::cerr << "exception: " << e.what() << "\n";
