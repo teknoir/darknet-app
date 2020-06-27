@@ -171,7 +171,7 @@ class callback : public virtual mqtt::callback,
 	// An action listener to display the result of actions.
 	action_listener subListener_;
 
-    Detector& detector_;
+    Detector* detector_;
     std::vector<std::string>& objNames_;
 
 	// This deomonstrates manually reconnecting to the broker by calling
@@ -242,11 +242,11 @@ class callback : public virtual mqtt::callback,
             image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
             std::cout << "Image processed..." << std::endl;
             auto start = std::chrono::high_resolution_clock::now();
-            std::vector<bbox_t> result_vec = detector_.detect(img);
+            std::vector<bbox_t> result_vec = detector_->detect(img);
             std::cout << "Image detected..." << std::endl;
             auto stop = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-            detector_.free_image(img);
+            detector_->free_image(img);
 
             show_console_result(result_vec, objNames_);
             auto j = json_result(result_vec, objNames_, img);
@@ -270,7 +270,7 @@ class callback : public virtual mqtt::callback,
 	void delivery_complete(mqtt::delivery_token_ptr token) override {}
 
 public:
-	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts, Detector detector, std::vector<std::string>& objNames)
+	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts, Detector* detector, std::vector<std::string>& objNames)
 				: nretry_(0), cli_(cli), connOpts_(connOpts), subListener_("Subscription"), detector_(detector), objNames_(objNames) {}
 };
 
@@ -311,7 +311,7 @@ int main(int argc, char* argv[])
         exit(signum);
     };
 
-    callback cb(cli, connOpts, detector, objNames);
+    callback cb(cli, connOpts, &detector, objNames);
     cli.set_callback(cb);
 
 	// Start the connection.
