@@ -32,14 +32,14 @@ RUN git clone https://github.com/eclipse/paho.mqtt.cpp && \
 RUN cp -rf ${PAHO_MQTT_HOME}/lib/* /usr/lib/ && \
     cp -rf ${PAHO_MQTT_HOME}/include/* /usr/include/
 
-WORKDIR /darknet
-RUN git clone https://github.com/AlexeyAB/darknet.git && \
-    cd darknet && \
-    make GPU=1 LIBSO=1 ARCH=" -gencode arch=compute_53,code=[sm_53,compute_53]" LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64:$LD_LIBRARY_PATH
 #WORKDIR /darknet
 #RUN git clone https://github.com/AlexeyAB/darknet.git && \
 #    cd darknet && \
-#    ./build.sh
+#    make GPU=1 LIBSO=1 ARCH=" -gencode arch=compute_53,code=[sm_53,compute_53]" LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64:$LD_LIBRARY_PATH
+WORKDIR /darknet
+RUN git clone https://github.com/AlexeyAB/darknet.git && \
+    cd darknet && \
+    ./build.sh
 
 RUN cp -rf /darknet/darknet/libdarknet.so /usr/lib/ && \
     cp -rf /darknet/darknet/include/* /usr/include/
