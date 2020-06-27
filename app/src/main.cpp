@@ -191,41 +191,39 @@ int main(int argc, char* argv[])
 		while (true) {
 			auto msg = cli.consume_message();
 			if (!msg) break;
-			if (msg->get_topic() == MQTT_IN_0) {
-                std::cout << "Image received!\n" << std::flush;
-                try {
-                    //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
-                    //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
-                    //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
-                    std::string encodedImageData = msg->get_payload_str();
-                    std::string delimiter = ";base64,";
-                    encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
-                    std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
-                    image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
+			std::cout << "Message received!\n" << std::flush;
+            try {
+                //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
+                //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
+                //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
+                std::string encodedImageData = msg->get_payload_str();
+                std::string delimiter = ";base64,";
+                encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
+                std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
+                image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
 
-                    auto start = std::chrono::high_resolution_clock::now();
-                    std::vector<bbox_t> result_vec = detector.detect(img);
-                    auto stop = std::chrono::high_resolution_clock::now();
-                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-                    detector.free_image(img);
+                auto start = std::chrono::high_resolution_clock::now();
+                std::vector<bbox_t> result_vec = detector.detect(img);
+                auto stop = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+                detector.free_image(img);
 
-                    show_console_result(result_vec, obj_names);
-                    auto j = json_result(result_vec, obj_names, img);
-                    j["image"] = msg->get_payload_str();
-                    j["inference_time"] = duration.count()/1000.0;
+                show_console_result(result_vec, obj_names);
+                auto j = json_result(result_vec, obj_names, img);
+                j["image"] = msg->get_payload_str();
+                j["inference_time"] = duration.count()/1000.0;
 
-                    //topic_out.publish(j.dump());
+                //topic_out.publish(j.dump());
 
-                    mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
-                    pubmsg->set_qos(QOS);
-                    cli.publish(pubmsg)->wait_for(TIMEOUT);
-                }
-                catch (std::exception &e) {
-                    std::cerr << "exception: " << e.what() << "\n";
-                }
-                catch (...) {
-                    std::cerr << "unknown exception \n";
-                }
+                mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
+                pubmsg->set_qos(QOS);
+                cli.publish(pubmsg)->wait_for(TIMEOUT);
+            }
+            catch (std::exception &e) {
+                std::cerr << "exception: " << e.what() << "\n";
+            }
+            catch (...) {
+                std::cerr << "unknown exception \n";
             }
 		}
 
