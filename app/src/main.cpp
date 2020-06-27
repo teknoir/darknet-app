@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
 		while (true) {
 			auto msg = cli.consume_message();
 			if (!msg) break;
-			if (MQTT_IN_0 == topic_in.get_name()) {
+			if (msg->get_topic() == MQTT_IN_0) {
                 std::cout << "Image received!\n" << std::flush;
                 try {
                     //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
