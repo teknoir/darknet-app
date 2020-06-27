@@ -1,66 +1,66 @@
 timeout: '3600s'
 
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-amd64.base'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
-      - '-f'
-      - './amd64.base.Dockerfile'
-      - '.'
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-amd64.base'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
-    waitFor: ['build-amd64.base']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'manifest-base'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'create'
-      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
-    waitFor: ['push-amd64.base']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'annotate-manifest-amd64.base'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'annotate'
-      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
-      - '--os=linux'
-    waitFor: ['manifest-base']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-manifest.base'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
-    waitFor: ['annotate-manifest-amd64.base']
-
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'amd64'
-    args:
-      - 'build'
-      - '-t'
-      - 'gcr.io/$PROJECT_ID/darknet:amd64'
-      - '-f'
-      - './amd64.Dockerfile'
-      - '.'
-    waitFor: ['push-manifest.base']
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'build-amd64.base'
+#    args:
+#      - 'build'
+#      - '-t'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+#      - '-f'
+#      - './amd64.base.Dockerfile'
+#      - '.'
+#
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'push-amd64.base'
+#    args:
+#      - 'push'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+#    waitFor: ['build-amd64.base']
+#
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'manifest-base'
+#    env:
+#      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+#    args:
+#      - 'manifest'
+#      - 'create'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+#    waitFor: ['push-amd64.base']
+#
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'annotate-manifest-amd64.base'
+#    env:
+#      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+#    args:
+#      - 'manifest'
+#      - 'annotate'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+#      - '--os=linux'
+#    waitFor: ['manifest-base']
+#
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'push-manifest.base'
+#    env:
+#      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+#    args:
+#      - 'manifest'
+#      - 'push'
+#      - 'gcr.io/$PROJECT_ID/darknet_base:${SHORT_SHA}'
+#    waitFor: ['annotate-manifest-amd64.base']
+#
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'amd64'
+#    args:
+#      - 'build'
+#      - '-t'
+#      - 'gcr.io/$PROJECT_ID/darknet:amd64'
+#      - '-f'
+#      - './amd64.Dockerfile'
+#      - '.'
+#    waitFor: ['push-manifest.base']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'arm64v8'
@@ -72,12 +72,12 @@ steps:
       - './arm64v8.Dockerfile'
       - '.'
 
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-amd64'
-    args:
-      - 'push'
-      - 'gcr.io/$PROJECT_ID/darknet:amd64'
-    waitFor: ['amd64']
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'push-amd64'
+#    args:
+#      - 'push'
+#      - 'gcr.io/$PROJECT_ID/darknet:amd64'
+#    waitFor: ['amd64']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-arm64v8'
@@ -94,21 +94,21 @@ steps:
       - 'manifest'
       - 'create'
       - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/darknet:amd64'
+#      - 'gcr.io/$PROJECT_ID/darknet:amd64'
       - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
-    waitFor: ['push-amd64', 'push-arm64v8']
+    waitFor: ['push-arm64v8'] #'push-amd64',
 
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'annotate-manifest-amd64'
-    env:
-      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
-    args:
-      - 'manifest'
-      - 'annotate'
-      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
-      - 'gcr.io/$PROJECT_ID/darknet:amd64'
-      - '--os=linux'
-    waitFor: ['manifest']
+#  - name: 'gcr.io/cloud-builders/docker'
+#    id: 'annotate-manifest-amd64'
+#    env:
+#      - 'DOCKER_CLI_EXPERIMENTAL=enabled'
+#    args:
+#      - 'manifest'
+#      - 'annotate'
+#      - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
+#      - 'gcr.io/$PROJECT_ID/darknet:amd64'
+#      - '--os=linux'
+#    waitFor: ['manifest']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'annotate-manifest-arm64v8'
@@ -132,9 +132,9 @@ steps:
       - 'manifest'
       - 'push'
       - 'gcr.io/$PROJECT_ID/darknet:${SHORT_SHA}'
-    waitFor: ['annotate-manifest-amd64', 'annotate-manifest-arm64v8']
+    waitFor: ['annotate-manifest-arm64v8'] #'annotate-manifest-amd64',
 
 images:
-  - 'gcr.io/$PROJECT_ID/darknet:amd64'
+#  - 'gcr.io/$PROJECT_ID/darknet:amd64'
   - 'gcr.io/$PROJECT_ID/darknet:arm64v8'
-  - 'gcr.io/$PROJECT_ID/darknet_base:amd64'
+#  - 'gcr.io/$PROJECT_ID/darknet_base:amd64'

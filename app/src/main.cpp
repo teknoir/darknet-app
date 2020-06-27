@@ -144,12 +144,19 @@ int main(int argc, char* argv[])
 
 	mqtt::async_client cli(SERVER_ADDRESS, ""); //, MAX_BUFFERED_MSGS, PERSIST_DIR);
 
+    // Set topics: in and out
+	mqtt::topic topic_in { cli, MQTT_IN_0, QOS };
+	mqtt::topic topic_out { cli, MQTT_OUT_0, QOS };
+
     // register signal SIGINT and signal handler and graceful disconnect
     signal(SIGINT, signalHandler);
     shutdown_handler = [&](int signum) {
         // Disconnect
         try {
             std::cout << "Disconnecting from the MQTT broker..." << std::flush;
+            cli.unsubscribe(MQTT_IN_0)->wait();
+            cli.unsubscribe(MQTT_OUT_0)->wait();
+            cli.stop_consuming();
             cli.disconnect()->wait();
             std::cout << "OK" << std::endl;
         }
@@ -160,51 +167,6 @@ int main(int argc, char* argv[])
 
         exit(signum);
     };
-
-    // Set topics: in and out
-	mqtt::topic topic_in { cli, MQTT_IN_0, QOS };
-	mqtt::topic topic_out { cli, MQTT_OUT_0, QOS };
-
-    std::function<void(mqtt::const_message_ptr)> message_handler = [&](mqtt::const_message_ptr msg) {
-        std::cout << "Image received!\n" << std::flush;
-        try {
-            //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
-            //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
-            //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
-            std::string encodedImageData = msg->get_payload_str();
-            std::string delimiter = ";base64,";
-            encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
-            std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
-            image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
-
-            auto start = std::chrono::high_resolution_clock::now();
-            std::vector<bbox_t> result_vec = detector.detect(img);
-            auto stop = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-            detector.free_image(img);
-
-            show_console_result(result_vec, obj_names);
-            auto j = json_result(result_vec, obj_names, img);
-            j["image"] = msg->get_payload_str();
-            j["inference_time"] = duration.count()/1000.0;
-            topic_out.publish(j.dump());
-        }
-        catch (std::exception &e) {
-            std::cerr << "exception: " << e.what() << "\n";
-        }
-        catch (...) {
-            std::cerr << "unknown exception \n";
-        }
-    };
-
-	// Set the callback for incoming messages
-	cli.set_message_callback([topic_in, topic_out, message_handler](mqtt::const_message_ptr msg) mutable {
-	    std::cout << "Message received on topic: " << msg->get_topic() << "\n" << std::flush;
-	    if (msg->get_topic() == topic_in.get_name()) {
-	        message_handler(msg);
-	    }
-	    //    handleImageMsg(msg, ptrDetector, obj_names, &topic_out);
-	});
 
 	// Start the connection.
 	try {
@@ -220,15 +182,53 @@ int main(int argc, char* argv[])
 		topic_in.subscribe(subOpts)->wait();
 		topic_out.subscribe(subOpts)->wait();
 		std::cout << "Ok" << std::endl;
+
+        // Consume messages
+
+		while (true) {
+			auto msg = cli.consume_message();
+			if (!msg) break;
+			if (msg->get_topic() == topic_in.get_name()) {
+                std::cout << "Image received!\n" << std::flush;
+                try {
+                    //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
+                    //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
+                    //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
+                    std::string encodedImageData = msg->get_payload_str();
+                    std::string delimiter = ";base64,";
+                    encodedImageData.erase(0, encodedImageData.find(delimiter) + delimiter.length()); // Remove MIME header
+                    std::vector<BYTE> decodedImageData = base64_decode(encodedImageData);
+                    image_t img = proc_image(&decodedImageData.front(), decodedImageData.size());
+
+                    auto start = std::chrono::high_resolution_clock::now();
+                    std::vector<bbox_t> result_vec = detector.detect(img);
+                    auto stop = std::chrono::high_resolution_clock::now();
+                    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+                    detector.free_image(img);
+
+                    show_console_result(result_vec, obj_names);
+                    auto j = json_result(result_vec, obj_names, img);
+                    j["image"] = msg->get_payload_str();
+                    j["inference_time"] = duration.count()/1000.0;
+                    topic_out.publish(j.dump());
+                }
+                catch (std::exception &e) {
+                    std::cerr << "exception: " << e.what() << "\n";
+                }
+                catch (...) {
+                    std::cerr << "unknown exception \n";
+                }
+            }
+		}
+
+		// Disconnect
+		shutdown_handler(0);
 	}
 	catch (const mqtt::exception& exc) {
 		std::cerr << "\nERROR: Unable to connect. "
 			<< exc.what() << std::endl;
 		return 1;
 	}
-
-	// Just block till user tells us to quit with a SIGINT.
-    while(true){ usleep(250000); }
 
  	return 0;
 }
