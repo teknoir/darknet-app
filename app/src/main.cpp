@@ -129,6 +129,8 @@ int main(int argc, char* argv[])
 	// Tell the broker we don't want our own messages sent back to us.
 	const bool NO_LOCAL = true;
 
+	const auto TIMEOUT = std::chrono::seconds(10);
+
     // Darknet configs
 	const std::string  NAMES_FILE(getOrDefault("NAMES_FILE", "/darknet/coco.names"));
     const std::string  CFG_FILE(getOrDefault("CFG_FILE", "/darknet/yolov3.cfg"));
@@ -142,11 +144,11 @@ int main(int argc, char* argv[])
 	connOpts.set_automatic_reconnect(true);
 	connOpts.set_mqtt_version(MQTTVERSION_3_1_1);
 
-	mqtt::async_client cli(SERVER_ADDRESS, ""); //, MAX_BUFFERED_MSGS, PERSIST_DIR);
+	mqtt::async_client cli(SERVER_ADDRESS, "darknet"); //, MAX_BUFFERED_MSGS, PERSIST_DIR);
 
     // Set topics: in and out
-	mqtt::topic topic_in { cli, MQTT_IN_0, QOS };
-	mqtt::topic topic_out { cli, MQTT_OUT_0, QOS };
+	//mqtt::topic topic_in { cli, MQTT_IN_0, QOS };
+	//mqtt::topic topic_out { cli, MQTT_OUT_0, QOS };
 
     // register signal SIGINT and signal handler and graceful disconnect
     signal(SIGINT, signalHandler);
@@ -155,7 +157,7 @@ int main(int argc, char* argv[])
         try {
             std::cout << "Disconnecting from the MQTT broker..." << std::flush;
             cli.unsubscribe(MQTT_IN_0)->wait();
-            cli.unsubscribe(MQTT_OUT_0)->wait();
+            //cli.unsubscribe(MQTT_OUT_0)->wait();
             cli.stop_consuming();
             cli.disconnect()->wait();
             std::cout << "OK" << std::endl;
@@ -171,16 +173,17 @@ int main(int argc, char* argv[])
 	// Start the connection.
 	try {
 		std::cout << "Connecting to the MQTT broker at '" << SERVER_ADDRESS << "'..." << std::flush;
-		auto tok = cli.connect(connOpts);
-		tok->wait();
+		cli.connect(connOpts)->wait();
 
 		// Subscribe to the topic using "no local" so that
 		// we don't get own messages sent back to us
 
 		std::cout << "Ok\nJoining the topics..." << std::flush;
-		auto subOpts = mqtt::subscribe_options(NO_LOCAL);
-		topic_in.subscribe(subOpts)->wait();
-		topic_out.subscribe(subOpts)->wait();
+		//auto subOpts = mqtt::subscribe_options(NO_LOCAL);
+		//topic_in.subscribe(subOpts)->wait();
+		//topic_out.subscribe(subOpts)->wait();
+		cli.start_consuming();
+        cli.subscribe(MQTT_IN_0, QOS)->wait();
 		std::cout << "Ok" << std::endl;
 
         // Consume messages
@@ -210,7 +213,12 @@ int main(int argc, char* argv[])
                     auto j = json_result(result_vec, obj_names, img);
                     j["image"] = msg->get_payload_str();
                     j["inference_time"] = duration.count()/1000.0;
-                    topic_out.publish(j.dump());
+
+                    //topic_out.publish(j.dump());
+
+                    mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
+                    pubmsg->set_qos(QOS);
+                    cli.publish(pubmsg)->wait_for(TIMEOUT);
                 }
                 catch (std::exception &e) {
                     std::cerr << "exception: " << e.what() << "\n";
