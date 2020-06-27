@@ -39,6 +39,7 @@ RUN cp -rf ${PAHO_MQTT_HOME}/lib/* /usr/lib/ && \
 WORKDIR /darknet
 RUN git clone https://github.com/AlexeyAB/darknet.git && \
     cd darknet && \
+    mkdir -p share/darknet/ && \
     ./build.sh
 
 RUN cp -rf /darknet/darknet/libdarknet.so /usr/lib/ && \
