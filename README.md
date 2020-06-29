@@ -28,9 +28,9 @@ make install
 
 ## Run interactively on device
 ```bash
-sudo kubectl run darknet -ti --rm --image tekn0ir/darknet:arm64v8 --overrides='{"spec":{"imagePullSecrets":[{"name":"gcr-json-key"}],"containers":[{"name":"darknet","image":"tekn0ir/darknet:arm64v8","command":["/bin/bash"],"tty":true,"stdin":true,"imagePullPolicy":"Always","securityContext":{"privileged":true},"env":[{"name":"MQTT_SERVICE_HOST","value":"mqtt.kube-system"},{"name":"MQTT_SERVICE_PORT","value":"1883"},{"name":"MQTT_IN_0","value":"camera/images"},{"name":"MQTT_OUT_0","value":"toe/events"}]}]}}'
+sudo kubectl run darknet -ti --rm --image tekn0ir/darknet:arm64v8 --overrides='{"spec":{"imagePullSecrets":[{"name":"gcr-json-key"}],"containers":[{"name":"darknet","image":"tekn0ir/darknet:arm64v8","command":["/bin/bash"],"tty":true,"stdin":true,"imagePullPolicy":"Always","securityContext":{"privileged":true},"env":[{"name":"MQTT_SERVICE_HOST","value":"mqtt.kube-system"},{"name":"MQTT_SERVICE_PORT","value":"1883"},{"name":"MQTT_IN_0","value":"camera/images"},{"name":"MQTT_OUT_0","value":"toe/events"},{"name":"NAMES_FILE","value":"/darknet/coco.names"},{"name":"CFG_FILE","value":"/darknet/yolov3.cfg"},{"name":"WEIGHTS_FILE","value":"/darknet/yolov3.weights"}]}]}}'
 
-python3 app.py
+teknoir_app
 ```
 
 ## Run locally

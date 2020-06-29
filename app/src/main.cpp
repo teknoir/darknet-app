@@ -259,6 +259,7 @@ class callback : public virtual mqtt::callback,
             pubmsg->set_qos(QOS);
             //cli_.publish(pubmsg)->wait_for(TIMEOUT);
             cli_.publish(pubmsg);
+            std::cout << "Detection published..." << std::endl;
         }
         catch (std::exception &e) {
             std::cerr << "exception: " << e.what() << "\n";
