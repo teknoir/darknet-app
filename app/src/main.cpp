@@ -172,7 +172,7 @@ class callback : public virtual mqtt::callback,
 	action_listener subListener_;
 
     Detector* detector_;
-    std::vector<std::string>& objNames_;
+    std::vector<std::string> objNames_;
 
 	// This deomonstrates manually reconnecting to the broker by calling
 	// connect() again. This is a possibility for an application that keeps
@@ -271,14 +271,14 @@ class callback : public virtual mqtt::callback,
 	void delivery_complete(mqtt::delivery_token_ptr token) override {}
 
 public:
-	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts, Detector* detector, std::vector<std::string>& objNames)
-				: nretry_(0), cli_(cli), connOpts_(connOpts), subListener_("Subscription"), detector_(detector), objNames_(objNames) {}
+	callback(mqtt::async_client& cli, mqtt::connect_options& connOpts, Detector* detector) //, std::vector<std::string>& objNames)
+				: nretry_(0), cli_(cli), connOpts_(connOpts), subListener_("Subscription"), detector_(detector), objNames_(objects_names_from_file(NAMES_FILE)) {}
 };
 
 int main(int argc, char* argv[])
 {
     Detector detector(CFG_FILE, WEIGHTS_FILE);
-    auto objNames = objects_names_from_file(NAMES_FILE);
+    // auto objNames = objects_names_from_file(NAMES_FILE);
 
     mqtt::connect_options connOpts;
 	connOpts.set_keep_alive_interval(20);
@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
         exit(signum);
     };
 
-    callback cb(cli, connOpts, &detector, objNames);
+    callback cb(cli, connOpts, &detector); //, objNames);
     cli.set_callback(cb);
 
 	// Start the connection.
