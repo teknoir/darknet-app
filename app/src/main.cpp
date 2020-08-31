@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cctype>
 #include <thread>
+#include <mutex>
 #include <chrono>
 #include <csignal>
 #include <functional>
@@ -49,6 +50,10 @@ const int QOS = 1;
 const std::string  NAMES_FILE(getOrDefault("NAMES_FILE", "/darknet/coco.names"));
 const std::string  CFG_FILE(getOrDefault("CFG_FILE", "/darknet/yolov3.cfg"));
 const std::string  WEIGHTS_FILE(getOrDefault("WEIGHTS_FILE", "/darknet/yolov3.weights"));
+
+// Locks
+std::mutex gmtx;
+std::unique_lock<std::mutex> glock(gmtx, std::defer_lock);
 
 static image proc_image_stb(unsigned char* buffer, int len, int channels)
 {
@@ -174,6 +179,8 @@ class callback : public virtual mqtt::callback,
     Detector* detector_;
     std::vector<std::string> objNames_;
 
+    std::thread* t_;
+
 	// This deomonstrates manually reconnecting to the broker by calling
 	// connect() again. This is a possibility for an application that keeps
 	// a copy of it's original connect_options, or if the app wants to
@@ -225,12 +232,11 @@ class callback : public virtual mqtt::callback,
 		reconnect();
 	}
 
-	// Callback for when a message arrives.
-	void message_arrived(mqtt::const_message_ptr msg) override {
-		std::cout << "Message arrived" << std::endl;
-		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
-		//std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
-		try {
+    void process_message(mqtt::const_message_ptr msg) {
+        std::lock_guard<decltype(glock)> g(glock);
+
+        //std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+        try {
             //std::cout << "Regexp before: " << msg->get_payload_str() << "\n" << std::flush;
             //std::regex e("^data:image/.+;base64,(.+)");  // All regexp crash due to recursion on (.*) on long lines like this
             //std::string encodedImageData = std::regex_replace(msg->get_payload_str(), e, "$2");
@@ -252,12 +258,13 @@ class callback : public virtual mqtt::callback,
             auto j = json_result(result_vec, objNames_, img);
             j["image"] = msg->get_payload_str();
             j["inference_time"] = duration.count()/1000.0;
+            std::cout << "Inference time: " << j["inference_time"] << std::endl;
 
             //topic_out.publish(j.dump());
 
             mqtt::message_ptr pubmsg = mqtt::make_message(MQTT_OUT_0, j.dump());
             pubmsg->set_qos(QOS);
-            //cli_.publish(pubmsg)->wait_for(TIMEOUT);
+            //client.publish(pubmsg)->wait_for(TIMEOUT);
             cli_.publish(pubmsg);
             std::cout << "Detection published..." << std::endl;
         }
@@ -266,6 +273,18 @@ class callback : public virtual mqtt::callback,
         }
         catch (...) {
             std::cerr << "unknown exception \n";
+        }
+    }
+	// Callback for when a message arrives.
+	void message_arrived(mqtt::const_message_ptr msg) override {
+		std::cout << "Message arrived" << std::endl;
+		std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
+
+        if (glock.owns_lock()) {
+            std::cout << "Darknet process busy processing, skipping this image..." << std::endl;
+        } else {
+            std::cout << "Starting Darknet process..." << std::endl;
+            t_ = new std::thread(&callback::process_message, this, msg);
         }
 	}
 

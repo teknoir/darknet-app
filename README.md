@@ -47,6 +47,12 @@ To stop the example press `ctrl-c`.
 docker build -t tekn0ir/darknet:amd64 -f amd64.Dockerfile .
 docker push tekn0ir/darknet:amd64
 ```
+```bash
+docker build -t tekn0ir/darknet_base:arm32v7 -f arm32v7.base.Dockerfile .
+docker push tekn0ir/darknet_base:arm32v7
+docker build -t tekn0ir/darknet:arm32v7 -f arm32v7.Dockerfile .
+docker push tekn0ir/darknet:arm32v7
+```
 
 
 

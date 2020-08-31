@@ -3,7 +3,7 @@ project(test)
 #This is how you make a comment
 
 #This is where you can set flags such as -Wall -pedantic etc...
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
 #This is required
 cmake_minimum_required(VERSION 2.8)
