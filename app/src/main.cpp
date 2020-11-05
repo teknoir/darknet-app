@@ -34,7 +34,9 @@ std::string getOrDefault(std::string name, std::string value)
         return value;
 }
 // The client name on the broker
-const std::string CLIENT_ID("darknet");
+const std::string CLIENT_ID(getOrDefault("CLIENT_ID", "darknet"));
+// The model name, describes what model and version that this app use
+const std::string MODEL(getOrDefault("MODEL", "darknet-base"));
 // The broker/server address
 const std::string SERVER_ADDRESS("tcp://"+getOrDefault("MQTT_SERVICE_HOST", "mqtt.kube-system")+":"+getOrDefault("MQTT_SERVICE_PORT", "1883"));
 // The topic name for output 0
@@ -256,6 +258,7 @@ class callback : public virtual mqtt::callback,
 
             show_console_result(result_vec, objNames_);
             auto j = json_result(result_vec, objNames_, img);
+            j["model"] = MODEL;
             j["image"] = msg->get_payload_str();
             j["inference_time"] = duration.count()/1000.0;
             std::cout << "Inference time: " << j["inference_time"] << std::endl;

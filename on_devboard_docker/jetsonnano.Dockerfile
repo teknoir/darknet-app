@@ -20,7 +20,7 @@ ENV C_INCLUDE_PATH=${PAHO_MQTT_HOME}/include:${C_INCLUDE_PATH}
 ENV CPATH=${PAHO_MQTT_HOME}/include:$CPATH
 WORKDIR ${PAHO_MQTT_HOME}
 RUN git clone https://github.com/eclipse/paho.mqtt.c.git && \
-    cd paho.mqtt.c && git checkout v1.3.1 && \
+    cd paho.mqtt.c && git checkout v1.3.6 && \
     cmake -Bbuild -H. -DPAHO_WITH_SSL=TRUE -DPAHO_BUILD_DOCUMENTATION=FALSE -DPAHO_BUILD_SAMPLES=FALSE -DPAHO_ENABLE_TESTING=FALSE -DCMAKE_INSTALL_PREFIX=${PAHO_MQTT_HOME} && \
     cmake --build build/ --target install
 
